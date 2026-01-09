@@ -287,9 +287,20 @@ const MaintenanceWorker = () => {
                             onResult={(result, error) => {
                                 if (!!result) {
                                     const text = result?.getText();
-                                    setScannedData(text);
-                                    toast.success(`Scanned: ${text}`);
-                                    setIsScanning(false);
+                                    // 1. Try to find the structure in our local store
+                                    const found = structures.find(s => s.id === text || s.name === text);
+                                    
+                                    if (found) {
+                                        setScannedData(found.id);
+                                        toast.success(`Asset Identified: ${found.name}`);
+                                        setIsScanning(false);
+                                        // Auto-select for report
+                                        setSelectedStructure(found.name);
+                                    } else {
+                                        // 2. Fallback for demo: if user scans random text, just show it
+                                        toast.error(`Unknown Asset ID: ${text}`);
+                                        // Don't close scanner, let them try again
+                                    }
                                 }
                             }}
                             constraints={{ facingMode: 'environment' }}
@@ -299,8 +310,12 @@ const MaintenanceWorker = () => {
                         />
                         {/* Overlay Frame */}
                         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                            <div className="w-64 h-64 border-2 border-white/50 rounded-lg flex items-center justify-center">
+                            <div className="w-64 h-64 border-2 border-white/50 rounded-lg flex items-center justify-center relative">
+                                <div className="absolute inset-0 border-2 border-transparent border-t-blue-500 border-b-blue-500 opacity-50 animate-pulse"></div>
                                 <div className="animate-pulse w-full h-0.5 bg-red-500 shadow-[0_0_10px_red]"></div>
+                                <div className="absolute top-2 left-0 w-full text-center text-xs text-white/70 font-mono">
+                                    ALIGN QR CODE
+                                </div>
                             </div>
                         </div>
                      </div>

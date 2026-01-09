@@ -65,8 +65,14 @@ const Index = () => {
     getSelectedSensor,
     systemStatus,
     toggleChat,
-    maintenanceTasks
+    maintenanceTasks,
+    connectToServer // Added action
   } = useAppStore();
+
+  // Initialize System Connection
+  useEffect(() => {
+    connectToServer();
+  }, [connectToServer]);
 
   const {
     currentMessage,
