@@ -141,29 +141,39 @@ export const ChatBot = () => {
                     {/* Input Area */}
                     <div className="p-4 bg-white border-t border-slate-200">
                          {/* Suggestions */}
-                         {!isLoading && (
-                            <div className="flex gap-2 mb-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-                                {(user?.email === 'worker@smartnode.io' ? [
-                                    { label: "📋 My Tasks", prompt: "Summarize my pending maintenance tasks and their due dates." },
-                                    { label: "🔧 Repair Guide", prompt: "How do I recalibrate a vibration sensor manually?" },
-                                    { label: "⚠️ Safety", prompt: "What are the safety protocols for working at height on towers?" },
-                                    { label: "📝 Draft Report", prompt: "Help me write a damage report for a corroded bridge cable." }
-                                ] : [
-                                    { label: "📊 Structure Status", prompt: "Give me a table summary of all structures with their health status and sensor count." },
-                                    { label: "🚨 Critical Risks", prompt: "Which structures are in critical condition and what are the specific risks?" },
-                                    { label: "📝 Maintenance Plan", prompt: "Draft a maintenance protocol based on current telemetry data." },
-                                    { label: "📄 Generate Report", prompt: "Generate a full structural status report including executive summary." }
-                                ]).map((s, i) => (
-                                    <button 
-                                        key={i}
-                                        onClick={() => handleSend(s.prompt)}
-                                        className="text-[10px] whitespace-nowrap px-3 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-full border border-slate-200 transition-colors"
-                                    >
-                                        {s.label}
-                                    </button>
-                                ))}
-                            </div>
-                         )}
+                          {!isLoading && (
+                             <div className="flex gap-2 mb-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+                                 {(() => {
+                                     // Worker Tasks: Operational & Safety
+                                     if (user?.role === 'field_worker' || user?.email?.includes('worker')) {
+                                         return [
+                                             { label: "📋 My Tasks", prompt: "Summarize my pending maintenance tasks and their due dates." },
+                                             { label: "🔧 Repair Guide", prompt: "How do I recalibrate a vibration sensor manually?" },
+                                             { label: "⚠️ Safety", prompt: "What are the safety protocols for working at height on towers?" },
+                                             { label: "📝 Draft Report", prompt: "Help me write a damage report for a corroded bridge cable." }
+                                         ];
+                                     }
+                                     // Admin Tasks: Strategic & Reporting
+                                     else if (user?.role === 'admin' || !user?.role) {
+                                         return [
+                                             { label: "📊 Structure Status", prompt: "Give me a table summary of all structures with their health status and sensor count." },
+                                             { label: "🚨 Critical Risks", prompt: "Which structures are in critical condition and what are the specific risks?" },
+                                             { label: "📝 Maintenance Plan", prompt: "Draft a maintenance protocol based on current telemetry data." },
+                                             { label: "📄 Generate Report", prompt: "Generate a full structural status report including executive summary." }
+                                         ];
+                                     } 
+                                     return [];
+                                 })().map((s, i) => (
+                                     <button 
+                                         key={i}
+                                         onClick={() => handleSend(s.prompt)}
+                                         className="text-[10px] whitespace-nowrap px-3 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-full border border-slate-200 transition-colors"
+                                     >
+                                         {s.label}
+                                     </button>
+                                 ))}
+                             </div>
+                          )}
 
                          {/* Model Selector */}
                          <select 

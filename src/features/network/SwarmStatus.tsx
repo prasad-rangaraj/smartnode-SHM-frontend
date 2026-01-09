@@ -154,66 +154,7 @@ export const SwarmStatus = () => {
         </div>
       </div>
       
-      {/* Network Visualization Stub */}
-      <div className="grid grid-cols-2 gap-6">
-         <div className="bg-slate-900 rounded-xl p-6 text-white overflow-hidden relative transition-all">
-            <div className="absolute top-0 right-0 p-3 opacity-20">
-              <Network className="w-24 h-24" />
-            </div>
-            
-            {selectedStructureId ? (
-                <>
-                    <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>
-                        Node: {selectedStructureId}
-                    </h3>
-                    <p className="text-slate-400 text-sm mb-6">Topology isolation active. Uplink established.</p>
-                    <div className="h-40 flex items-center justify-center gap-8 relative z-10 font-mono text-xs">
-                        <div className="flex flex-col items-center gap-2 opacity-50">
-                            <div className="w-8 h-8 rounded-full border border-slate-600 flex items-center justify-center">GW</div>
-                            <span>Gateway</span>
-                        </div>
-                        <div className="h-px w-16 bg-gradient-to-r from-slate-600 to-violet-500 animate-pulse"></div>
-                         <div className="w-12 h-12 bg-violet-600 rounded-full shadow-[0_0_30px_#7c3aed] flex items-center justify-center relative border-4 border-slate-800">
-                             <div className="absolute -inset-4 border border-violet-500/30 rounded-full animate-ping"></div>
-                             Target
-                        </div>
-                        <div className="h-px w-16 bg-gradient-to-r from-violet-500 to-slate-600 animate-pulse"></div>
-                        <div className="flex flex-col items-center gap-2 opacity-50">
-                            <div className="w-8 h-8 rounded-full border border-slate-600 flex items-center justify-center">N+1</div>
-                            <span>Relay</span>
-                        </div>
-                    </div>
-                </>
-            ) : (
-                <>
-                    <h3 className="text-lg font-bold mb-2">Mesh Topology</h3>
-                    <p className="text-slate-400 text-sm mb-6">Visualizing inter-node communication relays.</p>
-                    <div className="h-40 flex items-center justify-center gap-8 relative z-10">
-                       <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-[0_0_15px_#10b981] animate-pulse"></div>
-                       <div className="h-px w-16 bg-slate-700"></div>
-                       <div className="w-4 h-4 bg-blue-500 rounded-full shadow-[0_0_20px_#3b82f6] relative">
-                          <div className="absolute -inset-4 border border-blue-500/30 rounded-full animate-ping"></div>
-                       </div>
-                       <div className="h-px w-16 bg-slate-700"></div>
-                       <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-[0_0_15px_#10b981]"></div>
-                    </div>
-                </>
-            )}
-         </div>
 
-         <div className={`rounded-xl p-6 text-white overflow-hidden relative transition-all ${selectedStructureId ? 'bg-violet-600' : 'bg-indigo-600'}`}>
-             <div className="absolute top-0 right-0 p-3 opacity-20">
-               <Radio className="w-24 h-24" />
-             </div>
-             <h3 className="text-lg font-bold mb-2">Signal Strength</h3>
-             <p className="text-indigo-200 text-sm mb-6">{selectedStructureId ? `Latency to ${selectedStructureId}` : 'Average latency across region A1'}</p>
-             <div className="text-5xl font-mono font-bold">
-                 {selectedStructureId ? (Math.floor(Math.random() * 5) + 2) : '12'}
-                 <span className="text-2xl text-indigo-300">ms</span>
-             </div>
-         </div>
-      </div>
     </div>
   );
 };

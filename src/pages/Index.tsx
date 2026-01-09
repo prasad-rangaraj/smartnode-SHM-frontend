@@ -75,6 +75,7 @@ const Index = () => {
     triggerZoomIn,
     triggerAnomaly,
     triggerWarning,
+    generateLiveInsight, // Destructure new function
   } = useAIAssistant();
 
   const [messageType, setMessageType] = useState<'info' | 'warning' | 'critical' | 'prediction'>('info');
@@ -99,16 +100,25 @@ const Index = () => {
     type: s.health
   })), [structures]);
   
-  // Note: AnomalyEvent logic needs migration if we want it global, but for now let's keep the hook's simulation logic?
-  // Actually, useStructureData had the simulation logic. I need to port that logic or keep useStructureData purely as a "Simulation Engine" that updates the store.
-  // For this step, I will reimplement the basic alerts based on the Store's data.
-  // The simulation "engine" from useStructureData (the useEffects) is missing now as I removed the hook.
-  // I should probably add a "SimulationController" component or hook that runs the simulation and updates the store.
-  // To keep it simple and working: I'll add a simplified simulation effect right here or mock it.
-  
   // Re-implementing simplified simulation for alerts
   const showStressTest = simulation.active;
   const simulationLoad = simulation.load;
+
+  // AI Insight Generator (Periodic)
+  useEffect(() => {
+     if (structures.length === 0) return;
+
+     // Run analysis every 30 seconds
+     const analysisInterval = setInterval(() => {
+         const randomStructure = structures[Math.floor(Math.random() * structures.length)];
+         if (randomStructure) {
+             setMessageType('prediction');
+             generateLiveInsight(randomStructure);
+         }
+     }, 30000);
+
+     return () => clearInterval(analysisInterval);
+  }, [structures, generateLiveInsight]);
 
   // Update time every second
   useEffect(() => {
@@ -304,7 +314,7 @@ const Index = () => {
     if (id && id !== selectedStructureId) {
       const structure = structures.find((s) => s.id === id);
       if (structure) {
-        triggerZoomIn(structure.name);
+        triggerZoomIn(structure);
         setMessageType('info');
       }
     }
@@ -571,7 +581,6 @@ const Index = () => {
 
             {activeTab === 'Live Map' && <LiveMap />}
             {activeTab === 'Analytics' && <Analytics />}
-            {activeTab === 'Swarm Status' && <SwarmStatus />}
             {activeTab === 'Swarm Status' && <SwarmStatus />}
             {activeTab === 'Reports' && <Reports />}
             {activeTab === 'Inventory' && <InventoryView />}

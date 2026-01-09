@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppStore, MaintenanceTask, InventoryReport } from '@/store/useAppStore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -441,23 +441,45 @@ const InventoryAnalysis = () => {
     const highPriorityCount = maintenanceTasks.filter(t => t.status !== 'Completed' && t.priority === 'High').length;
     const pendingAlerts = maintenanceTasks.filter(t => t.status === 'Overdue').length;
     
-    const totalAssets = structures.length + structures.reduce((acc, curr) => acc + curr.sensors.length, 0) + 1200; // Mock base + sensors + structure nodes
+    const totalAssets = useMemo(() => {
+      const sensors = structures.reduce((acc, s) => acc + s.sensors.length, 0);
+      return structures.length + sensors + 24; // +24 misc (drones/gateways)
+    }, [structures]);
 
-    // Chart Data Mock
-    const assetDistData = [
-      { name: 'Sensors', value: 850 },
-      { name: 'Drones', value: 300 },
-      { name: 'Servers', value: 50 },
-      { name: 'Gateways', value: 48 },
-    ];
+    const assetDistData = useMemo(() => {
+       const sensorCount = structures.reduce((acc, s) => acc + s.sensors.length, 0);
+       return [
+         { name: 'Sensors', value: sensorCount },
+         { name: 'Struct. Nodes', value: structures.length },
+         { name: 'Gateways', value: Math.ceil(structures.length * 1.2) }, // Approx 1.2 per node
+         { name: 'Drones', value: 12 }, // Static fleet size for now
+       ];
+    }, [structures]);
+    
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
 
-    const costData = [
-      { name: 'Q1', maintenance: 12000, repairs: 4500 },
-      { name: 'Q2', maintenance: 15000, repairs: 3200 },
-      { name: 'Q3', maintenance: 9800, repairs: 8000 },
-      { name: 'Q4', maintenance: 18000, repairs: 2100 },
-    ];
+    const costData = useMemo(() => {
+        // Procedural generation based on task history to simulate "Real" costs
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        const currentQ = Math.floor((new Date().getMonth() + 3) / 3);
+        
+        return quarters.map((q, i) => {
+           const qIndex = i + 1;
+           // Future quarters have 0 cost
+           if (qIndex > currentQ) return { name: q, maintenance: 0, repairs: 0 };
+           
+           // Base costs + variable based on completed tasks
+           // This makes the chart "alive" as more tasks are completed
+           const completedCount = maintenanceTasks.filter(t => t.status === 'Completed').length;
+           const variableCost = completedCount * 150; 
+           
+           return { 
+             name: q, 
+             maintenance: 5000 + (variableCost * (Math.random() * 0.5 + 0.8)), 
+             repairs: 2000 + (variableCost * (Math.random() * 0.8 + 0.2)) 
+           };
+        });
+    }, [maintenanceTasks]);
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-20">

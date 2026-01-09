@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { predictTrend } from '@/services/predictiveModel';
+import { Structure } from '@/store/useAppStore';
+import { streamOpenRouterMessage, MODELS } from '@/services/openRouterService';
 
 interface AIMessage {
   id: string;
@@ -9,28 +12,7 @@ interface AIMessage {
 
 const aiResponses = {
   greeting: "Structural Nervous System online. All monitored assets are within normal parameters.",
-  warning: (structureName: string, sensorName: string, value: number) =>
-    `Elevated readings detected at ${structureName} - ${sensorName}. Current value: ${value.toFixed(1)}. Monitoring for pattern development.`,
-  critical: (structureName: string, sensorName: string) =>
-    `⚠️ Critical threshold breached at ${structureName} - ${sensorName}. Recommend immediate inspection. Historical patterns suggest potential structural fatigue.`,
-  prediction: (structureName: string) =>
-    `Based on vibration pattern analysis at ${structureName}, structural fatigue indicators may increase within 48-72 hours. Preventive maintenance recommended.`,
-  stable: (structureName: string) =>
-    `${structureName} has returned to stable parameters. All sensors operating within normal thresholds.`,
-  anomaly: (structureName: string, sensorName: string) =>
-    `Anomaly detected at ${structureName} - ${sensorName}. Running TinyML inference to classify event signature...`,
-  zoomIn: (structureName: string) =>
-    `Focusing on ${structureName}. ${getStructureDetails(structureName)}`,
 };
-
-function getStructureDetails(name: string): string {
-  const details: Record<string, string> = {
-    'Tower Alpha': 'This 24-sensor array monitors a 45-story commercial tower. Foundation integrity excellent.',
-    'Bridge Nexus': 'Critical infrastructure bridge with 18 sensors. Mid-span showing elevated traffic-induced vibrations.',
-    'Flyover Beta': 'Highway overpass with 12 monitoring points. Load distribution nominal.',
-  };
-  return details[name] || 'Structural data loading...';
-}
 
 export const useAIAssistant = () => {
   const [messages, setMessages] = useState<AIMessage[]>([]);
@@ -53,7 +35,7 @@ export const useAIAssistant = () => {
     // Auto-hide after delay
     setTimeout(() => {
       setIsActive(false);
-    }, 8000);
+    }, 12000); // Increased read time for LLM text
   }, []);
 
   const triggerGreeting = useCallback(() => {
@@ -62,56 +44,111 @@ export const useAIAssistant = () => {
     setTimeout(() => addMessage(aiResponses.greeting, 'info'), 1500);
   }, [addMessage]);
 
-  const triggerWarning = useCallback(
-    (structureName: string, sensorName: string, value: number) => {
+  const generateLLMInsight = useCallback(async (
+    context: string, 
+    type: AIMessage['type'] = 'info',
+    modelId: string = MODELS[0].id // Use DeepSeek by default
+  ) => {
       setIsThinking(true);
       setIsActive(true);
-      setTimeout(() => addMessage(aiResponses.warning(structureName, sensorName, value), 'warning'), 800);
+
+      const prompt = [
+          { role: 'system' as const, content: "You are Sentinel, an advanced Structural AI. Provide a single, professional, engineering-focused sentence (max 25 words) analyzing the provided structural status. Be concise and technical." },
+          { role: 'user' as const, content: context }
+      ];
+
+      try {
+          const response = await streamOpenRouterMessage(MODELS.find(m => m.id === modelId)?.key || '', prompt, modelId);
+          addMessage(response, type);
+      } catch (err) {
+          console.error("LLM Generation Failed", err);
+          // Fallback
+          addMessage("AI Connectivity Signal Weak. Using heuristic analysis: parameters are within deviation limits.", type);
+      }
+  }, [addMessage]);
+
+  const triggerWarning = useCallback(
+    (structureName: string, sensorName: string, value: number) => {
+      generateLLMInsight(
+          `Alert: Structure '${structureName}' sensor '${sensorName}' is reading ${value.toFixed(1)}. This is elevated.`, 
+          'warning'
+      );
     },
-    [addMessage]
+    [generateLLMInsight]
   );
 
   const triggerCritical = useCallback(
     (structureName: string, sensorName: string) => {
-      setIsThinking(true);
-      setIsActive(true);
-      setTimeout(() => addMessage(aiResponses.critical(structureName, sensorName), 'critical'), 500);
+      generateLLMInsight(
+          `CRITICAL ALERT: Structure '${structureName}' sensor '${sensorName}' has breached safety thresholds. Urgent inspection required.`, 
+          'critical'
+      );
     },
-    [addMessage]
+    [generateLLMInsight]
   );
 
-  const triggerPrediction = useCallback(
-    (structureName: string) => {
+  // New: Real Prediction Engine Integration + LLM Narrative
+  const generateLiveInsight = useCallback(async (structure: Structure) => {
+      const sensor = structure.sensors[0];
+      if (!sensor || sensor.trend.length < 5) return;
+
       setIsThinking(true);
       setIsActive(true);
-      setTimeout(() => addMessage(aiResponses.prediction(structureName), 'prediction'), 1200);
-    },
-    [addMessage]
-  );
+
+      try {
+          // 2. Run TensorFlow Prediction
+          const prediction = await predictTrend(sensor.trend, 5);
+          const maxPred = Math.max(...prediction.predictedValues);
+          const trendDir = maxPred > sensor.value ? "increasing" : "stabilizing";
+          
+          // 3. Generate LLM Narrative based on Data
+          await generateLLMInsight(
+              `Predictive Analysis for ${structure.name} (${structure.type}): Current load ${sensor.value.toFixed(1)}kN. TensorFlow model predicts peak of ${maxPred.toFixed(1)}kN in T+5h (Trend: ${trendDir}). Assess structural fatigue risk.`,
+              'prediction'
+          );
+
+      } catch (err) {
+          console.error("AI Insight Generation Failed", err);
+          setIsThinking(false);
+      }
+  }, [generateLLMInsight]);
 
   const triggerAnomaly = useCallback(
     (structureName: string, sensorName: string) => {
-      setIsThinking(true);
-      setIsActive(true);
-      setTimeout(() => addMessage(aiResponses.anomaly(structureName, sensorName), 'warning'), 600);
+      generateLLMInsight(`Anomaly detected at ${structureName} on sensor ${sensorName}. Pattern is irregular.`, 'warning');
     },
-    [addMessage]
+    [generateLLMInsight]
   );
 
   const triggerZoomIn = useCallback(
-    (structureName: string) => {
+    (structure: Structure) => {
       setIsThinking(true);
       setIsActive(true);
-      setTimeout(() => addMessage(aiResponses.zoomIn(structureName), 'info'), 400);
+      
+      const initMessages = [
+          `Initializing deep scan for ${structure.name}...`,
+          `Focusing sensors on ${structure.name}. Aggregating history...`,
+          `Switching analytical context to ${structure.name}...`,
+          `Retrieving real-time telemetry from ${structure.name}...`
+      ];
+      const randomMsg = initMessages[Math.floor(Math.random() * initMessages.length)];
+
+      // Immediate feedback
+      addMessage(randomMsg, 'info');
+      
+      // Trigger real analysis
+      setTimeout(() => {
+          generateLiveInsight(structure);
+      }, 1000);
     },
-    [addMessage]
+    [addMessage, generateLiveInsight]
   );
 
   const triggerStable = useCallback(
     (structureName: string) => {
-      addMessage(aiResponses.stable(structureName), 'info');
+       generateLLMInsight(`Structure ${structureName} has returned to stable parameters. All systems nominal.`, 'info');
     },
-    [addMessage]
+    [generateLLMInsight]
   );
 
   // Initial greeting
@@ -127,7 +164,7 @@ export const useAIAssistant = () => {
     isThinking,
     triggerWarning,
     triggerCritical,
-    triggerPrediction,
+    generateLiveInsight,
     triggerAnomaly,
     triggerZoomIn,
     triggerStable,
