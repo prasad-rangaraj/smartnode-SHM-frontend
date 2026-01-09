@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Modern Light Theme - "Clean Professional" */
+    --background: 210 40% 98%; /* Off-white/Ice Blue tint */
+    --foreground: 222 47% 11%; /* Deep Slate */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary - Deep Tech Blue */
+    --primary: 221 83% 53%; /* Blue-600 */
+    --primary-foreground: 210 40% 98%;
+    --primary-glow: 221 83% 53%;
+
+    /* Secondary - Slate */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+
+    /* Muted */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent - Vibrant Cyan/Teal for highlights */
+    --accent: 189 94% 43%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Status Colors - Clean & Readable */
+    --stable: 142 71% 45%; /* Green */
+    --stable-glow: 142 76% 36%;
+
+    --warning: 38 92% 50%; /* Amber */
+    --warning-glow: 45 93% 47%;
+
+    --critical: 345 82% 56%; /* Rose */
+    --critical-foreground: 0 0% 100%;
+    --critical-glow: 345 82% 56%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
+
+    --radius: 0.5rem;
+
+    /* Gradients */
+    --gradient-header: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    --gradient-card: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+    --gradient-canvas: radial-gradient(circle at 50% 0%, #f1f5f9, #e2e8f0);
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary font-sans;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply tracking-tight font-semibold font-sans;
+  }
+}
+
+@layer components {
+  /* Glassmorphism Utilities - Light Mode */
+  .glass-panel {
+    @apply backdrop-blur-md bg-white/70 border border-slate-200 shadow-xl;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-md bg-white/80 border border-slate-200 shadow-sm transition-all duration-300;
+  }
+
+  .glass-button {
+    @apply backdrop-blur-sm bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary transition-all shadow-sm;
+  }
+
+  /* Header */
+  .gov-header {
+    @apply glass-panel sticky top-0 z-50 border-b border-slate-200/50;
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  /* Modern Card */
+  .gov-card-elevated {
+    @apply glass-card rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  /* Sensor Nodes */
+  .gov-sensor-node {
+    @apply rounded-full shadow-sm transition-all duration-500 border border-white;
+  }
+
+  .gov-sensor-stable {
+    @apply bg-stable shadow-[0_0_8px_hsl(var(--stable))] animate-pulse;
+    animation-duration: 3s;
+  }
+
+  .gov-sensor-warning {
+    @apply bg-warning shadow-[0_0_12px_hsl(var(--warning))] animate-pulse;
+    animation-duration: 1.5s;
+  }
+
+  .gov-sensor-critical {
+    @apply bg-critical shadow-[0_0_15px_hsl(var(--critical))] animate-pulse;
+    animation-duration: 0.5s;
+  }
+
+  /* Canvas Background */
+  .canvas-bg {
+    @apply relative bg-slate-50;
+    background-image: radial-gradient(
+        circle at center,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 70%
+      ),
+      linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+    background-size: 100% 100%, 40px 40px, 40px 40px;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  * {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+}
