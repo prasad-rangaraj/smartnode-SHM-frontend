@@ -28,7 +28,7 @@ interface GovSidebarProps {
 
 
 export const GovSidebar = ({ structures }: GovSidebarProps) => {
-  const { setActiveTab, repairAll, setSystemStatus, systemStatus } = useAppStore();
+  const { setActiveTab, repairAll, setSystemStatus, systemStatus, addMaintenanceTask } = useAppStore(); // Added addMaintenanceTask
   const criticalCount = structures.filter(s => s.health === 'critical').length;
   const warningCount = structures.filter(s => s.health === 'warning').length;
 
@@ -71,7 +71,20 @@ export const GovSidebar = ({ structures }: GovSidebarProps) => {
     const confirmed = window.confirm("INITIATE EMERGENCY PROTOCOL?\n\nThis will trigger system-wide alerts and lock down non-critical sensors.");
     if (confirmed) {
         setSystemStatus('emergency-lockdown');
-        alert("PROTOCOL INITIATED. SYSTEM LOCKED.");
+        
+        // Notify Worker immediately via Task System
+        const errorSensor = structures.flatMap(s => s.sensors).find(s => s.health === 'critical') || structures[0].sensors[0];
+        const location = structures.find(s => s.sensors.includes(errorSensor))?.name || "Unknown Sector";
+
+        addMaintenanceTask({
+            item: `🚨 EMERGENCY: Check ${errorSensor.name} at ${location}`,
+            type: 'Inspection',
+            status: 'In Progress', // Skip 'Pending' to show immediately
+            priority: 'High',
+            due: new Date().toISOString().split('T')[0]
+        });
+
+        alert("PROTOCOL INITIATED. FIELD TEAMS NOTIFIED.");
     }
   };
 

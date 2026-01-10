@@ -9,6 +9,7 @@ import MaintenanceWorker from "./pages/MaintenanceWorker";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import { useAppStore } from "./store/useAppStore";
+import { ThresholdMonitor } from "./components/dashboard/ThresholdMonitor";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => {
           closeButton 
           position="top-center" 
         />
+        <ThresholdMonitor /> 
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />

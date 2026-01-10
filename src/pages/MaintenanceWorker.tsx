@@ -3,6 +3,7 @@ import { QrReader } from 'react-qr-reader';
 import { useAppStore } from '@/store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 import { StructureCard } from '@/features/dashboard/components/StructureCard';
+import { TelemetryModal } from '@/components/dashboard/TelemetryModal';
 import { QrCode, LogOut, CheckCircle2, Circle, Clock, AlertTriangle, ScanLine, X, ChevronRight, Bot, History, FileWarning, ListTodo } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatBot } from '@/features/ai/ChatBot';
@@ -21,6 +22,7 @@ const MaintenanceWorker = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [foundStructure, setFoundStructure] = useState<any>(null);
+  const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
 
   // Report Form State
   const [reportType, setReportType] = useState('damage');
@@ -351,8 +353,10 @@ const MaintenanceWorker = () => {
                         isSelected={true}
                         onSelect={() => {}} 
                         onViewDetails={() => {
-                            setFoundStructure(null);
-                            // Auto-select for report
+                            // Open Telemetry Modal for Graphs
+                            setIsTelemetryOpen(true);
+                            // We keep foundStructure open so the modal can read from it, 
+                            // or we can close it. Let's keep foundStructure as the "source"
                         }}
                      />
                      <Button 
@@ -372,6 +376,15 @@ const MaintenanceWorker = () => {
              )}
         </DialogContent>
       </Dialog>
+      
+      {/* Real-time Telemetry Graphs for Worker */}
+      <TelemetryModal 
+        isOpen={isTelemetryOpen} 
+        onClose={() => setIsTelemetryOpen(false)}
+        structure={foundStructure}
+        selectedSensorId={null}
+        onSelectSensor={() => {}}
+      />
 
       {/* AI Chat Button */}
       {!isChatOpen && (
