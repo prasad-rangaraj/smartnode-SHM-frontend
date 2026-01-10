@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { GovHeader } from '@/components/layout/GovHeader';
 import { GovSidebar } from '@/components/layout/GovSidebar';
 import { StructureCard } from '@/features/dashboard/components/StructureCard';
@@ -316,7 +316,7 @@ const Index = () => {
   }, [structures, systemStatus]);
 
   // Handle structure selection
-  const handleStructureSelect = (id: string) => {
+  const handleStructureSelect = useCallback((id: string) => {
     if (id && id !== selectedStructureId) {
       const structure = structures.find((s) => s.id === id);
       if (structure) {
@@ -325,7 +325,7 @@ const Index = () => {
       }
     }
     selectStructure(id || null);
-  };
+  }, [selectedStructureId, structures, triggerZoomIn, selectStructure]);
 
   const handleSensorSelect = (sensorId: string) => {
      selectSensor(sensorId === selectedSensorId ? null : sensorId);

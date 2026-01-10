@@ -218,6 +218,7 @@ const MaintenanceInventory = () => {
               <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground w-[100px]">ID</th>
                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Item / Asset</th>
+                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Location</th>
                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Type</th>
                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Status</th>
                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Due Date</th>
@@ -230,6 +231,9 @@ const MaintenanceInventory = () => {
                 <tr key={task.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                   <td className="p-4 align-middle font-mono text-xs">{task.id}</td>
                   <td className="p-4 align-middle font-medium">{task.item}</td>
+                  <td className="p-4 align-middle text-muted-foreground">
+                    {structures.find(s => task.item.includes(s.name))?.location || 'General'}
+                  </td>
                   <td className="p-4 align-middle">{task.type}</td>
                   <td className="p-4 align-middle">
                     <Badge variant={task.status === 'Completed' ? 'default' : task.status === 'Overdue' ? 'destructive' : 'secondary'} className="capitalize">
@@ -579,7 +583,7 @@ const InventoryAnalysis = () => {
 };
 
 export const InventoryView = () => {
-  const { maintenanceTasks, updateMaintenanceTaskStatus } = useAppStore();
+  const { maintenanceTasks, updateMaintenanceTaskStatus, structures } = useAppStore();
   const [activeSubTab, setActiveSubTab] = useState('maintenance');
 
   return (
@@ -633,6 +637,7 @@ export const InventoryView = () => {
                                     <tr>
                                         <th className="p-4 font-medium">ID</th>
                                         <th className="p-4 font-medium">Issue / Item</th>
+                                        <th className="p-4 font-medium">Location</th>
                                         <th className="p-4 font-medium">Type</th>
                                         <th className="p-4 font-medium">Submitted By</th>
                                         <th className="p-4 font-medium">Status</th>
@@ -642,13 +647,16 @@ export const InventoryView = () => {
                                 <tbody>
                                     {maintenanceTasks.filter(t => t.status === 'Pending Review' || t.item.includes('Complaint') || t.item.includes('Damage Report') || t.item.includes('Request')).length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="p-8 text-center text-muted-foreground">No pending reviews, complaints, or requests.</td>
+                                            <td colSpan={7} className="p-8 text-center text-muted-foreground">No pending reviews, complaints, or requests.</td>
                                         </tr>
                                     ) : (
                                         maintenanceTasks.filter(t => t.status === 'Pending Review' || t.item.includes('Complaint') || t.item.includes('Damage Report') || t.item.includes('Request')).map((task) => (
                                             <tr key={task.id} className="border-b last:border-0 hover:bg-slate-50">
                                                 <td className="p-4 font-mono">{task.id}</td>
                                                 <td className="p-4 font-medium">{task.item}</td>
+                                                <td className="p-4 text-muted-foreground">
+                                                    {structures.find(s => task.item.includes(s.name))?.location || 'Unknown'}
+                                                </td>
                                                 <td className="p-4">{task.type}</td>
                                                 <td className="p-4 text-muted-foreground">{task.assignedToId ? `Worker #${task.assignedToId}` : 'Unknown'}</td>
                                                 <td className="p-4">

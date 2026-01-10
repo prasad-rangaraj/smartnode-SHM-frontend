@@ -14,14 +14,19 @@ export const ThresholdMonitor = () => {
         type: string;
     } | null>(null);
 
-    // Thresholds
-    const THRESHOLDS = {
-        vibration: 80, // Hz
-        strain: 600,   // µε
-        temperature: 45 // °C
-    };
+    const [snoozeUntil, setSnoozeUntil] = useState<number>(0);
 
     useEffect(() => {
+        // Check snooze timer
+        if (Date.now() < snoozeUntil) return;
+
+        // Thresholds
+        const THRESHOLDS = {
+            vibration: 80, // Hz
+            strain: 600,   // µε
+            temperature: 45 // °C
+        };
+
         // Scan for new critical values
         for (const structure of structures) {
             for (const sensor of structure.sensors) {
@@ -42,13 +47,13 @@ export const ThresholdMonitor = () => {
                 }
             }
         }
-    }, [structures]);
+    }, [structures, criticalAlert, snoozeUntil]);
 
     if (!criticalAlert) return null;
 
     return (
         <Dialog open={!!criticalAlert} onOpenChange={() => setCriticalAlert(null)}>
-            <DialogContent className="border-rose-500 border-2 bg-rose-50">
+            <DialogContent className="border-rose-500 border-2 bg-rose-50 z-[99999]">
                 <DialogHeader>
                     <div className="flex items-center gap-3 text-rose-600 mb-2">
                          <div className="p-2 bg-rose-100 rounded-full">
@@ -90,11 +95,14 @@ export const ThresholdMonitor = () => {
                 <DialogFooter className="gap-2 sm:justify-start">
                     <Button 
                         variant="destructive" 
-                        onClick={() => setCriticalAlert(null)}
+                        onClick={() => {
+                            setSnoozeUntil(Date.now() + 5 * 60 * 1000); // Snooze for 5 minutes
+                            setCriticalAlert(null);
+                        }}
                         className="w-full bg-rose-600 hover:bg-rose-700 font-bold shadow-lg shadow-rose-200"
                     >
                         <AlertTriangle className="w-4 h-4 mr-2" />
-                        Acknowledge & Dispatch Team
+                        Acknowledge (Snooze 5m)
                     </Button>
                 </DialogFooter>
             </DialogContent>

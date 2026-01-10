@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { QrReader } from 'react-qr-reader';
-import { useAppStore } from '@/store/useAppStore';
+import { useAppStore, Structure } from '@/store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 import { StructureCard } from '@/features/dashboard/components/StructureCard';
 import { TelemetryModal } from '@/components/dashboard/TelemetryModal';
@@ -18,11 +18,42 @@ import { toast } from 'sonner';
 
 const MaintenanceWorker = () => {
   const navigate = useNavigate();
-  const { user, logout, maintenanceTasks, updateMaintenanceTaskStatus, fetchMaintenanceTasks, toggleChat, isChatOpen, structures, addMaintenanceTask } = useAppStore();
+  const { user, logout, maintenanceTasks, updateMaintenanceTaskStatus, fetchMaintenanceTasks, toggleChat, isChatOpen, structures, addMaintenanceTask, systemStatus } = useAppStore();
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
-  const [foundStructure, setFoundStructure] = useState<any>(null);
+  const [foundStructure, setFoundStructure] = useState<Structure | null>(null);
   const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
+  const [isAlarmMuted, setIsAlarmMuted] = useState(false);
+
+    // Vibration Effect for Emergency
+    useEffect(() => {
+        if (systemStatus === 'emergency-lockdown' && !isAlarmMuted) {
+            // 1 minute pulsing vibration pattern (approx 90 cycles of 700ms)
+            const pulse = 500;
+            const pause = 200;
+            const pattern = Array(90).fill([pulse, pause]).flat();
+            
+            // Trigger vibration if supported
+            if (navigator.vibrate) {
+                navigator.vibrate(pattern);
+                console.log("Providing haptic feedback for emergency");
+            }
+        } else {
+            // Stop vibration
+            if (navigator.vibrate) navigator.vibrate(0);
+        }
+        
+        return () => {
+            if (navigator.vibrate) navigator.vibrate(0);
+        };
+    }, [systemStatus, isAlarmMuted]);
+
+    // Reset mute if status goes back to normal
+    useEffect(() => {
+        if (systemStatus !== 'emergency-lockdown') {
+            setIsAlarmMuted(false);
+        }
+    }, [systemStatus]);
 
   // Report Form State
   const [reportType, setReportType] = useState('damage');
@@ -176,13 +207,9 @@ const MaintenanceWorker = () => {
                                 size="sm" 
                                 className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-100"
                                 onClick={() => {
-                                   if (task.item.startsWith('Complaint') || task.item.startsWith('Damage Report') || task.item.startsWith('Request')) {
-                                       updateMaintenanceTaskStatus(task.id, 'Completed');
-                                       toast.success('Complaint resolved and marked completed');
-                                   } else {
-                                       updateMaintenanceTaskStatus(task.id, 'Pending Review');
-                                       toast.success('Task submitted for Admin review');
-                                   }
+                                   // Previously separated, now all tasks go directly to Completed as per user request
+                                   updateMaintenanceTaskStatus(task.id, 'Completed');
+                                   toast.success('Task marked as completed');
                                 }} 
                              >
                                 <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Completed
@@ -289,7 +316,7 @@ const MaintenanceWorker = () => {
                      <div className="w-full h-full">
                         <QrReader
                             onResult={(result, error) => {
-                                if (!!result) {
+                                if (result) {
                                     const text = result?.getText();
                                     // 1. Try to find the structure in our local store
                                     const found = structures.find(s => s.id === text || s.name === text);
@@ -396,6 +423,40 @@ const MaintenanceWorker = () => {
           <Bot className="w-6 h-6 group-hover:rotate-12 transition-transform" />
         </button>
       )}
+
+      {/* EMERGENCY TAKEOVER MODAL */}
+      <Dialog open={systemStatus === 'emergency-lockdown' && !isAlarmMuted} onOpenChange={() => {}}>
+         <DialogContent className="w-full h-full max-w-none m-0 p-0 border-0 bg-rose-600 text-white flex flex-col items-center justify-center z-[99999] [&>button]:hidden">
+              <div className="absolute inset-0 bg-rose-700/50 animate-pulse"></div>
+              <div className="relative z-10 text-center space-y-6 px-6">
+                  <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto shadow-2xl animate-bounce">
+                      <AlertTriangle className="w-12 h-12 text-rose-600" />
+                  </div>
+                  
+                  <div>
+                      <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Emergency<br/>Protocol</h1>
+                      <div className="px-4 py-1 bg-white/20 rounded-full inline-block backdrop-blur-sm">
+                          <span className="text-sm font-bold uppercase tracking-widest">System Lockdown Active</span>
+                      </div>
+                  </div>
+
+                  <p className="text-lg font-medium opacity-90 max-w-xs mx-auto">
+                      All personnel must immediately cease operations and follow evacuation procedures.
+                  </p>
+
+                  <div className="pt-8">
+                       <Button 
+                          size="lg"
+                          className="w-full h-16 text-xl font-bold bg-white text-rose-600 hover:bg-rose-50 shadow-xl border-b-4 border-rose-800 active:border-b-0 active:translate-y-1 transition-all"
+                          onClick={() => setIsAlarmMuted(true)}
+                       >
+                          I AM SAFE - STOP ALARM
+                       </Button>
+                       <p className="text-xs mt-4 opacity-70">Pressing this will silence your device only.</p>
+                  </div>
+              </div>
+         </DialogContent>
+      </Dialog>
 
       {/* Chat Component */}
       <ChatBot />
