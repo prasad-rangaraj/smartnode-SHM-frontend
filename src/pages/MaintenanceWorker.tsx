@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { QrReader } from 'react-qr-reader';
 import { useAppStore } from '@/store/useAppStore';
 import { useNavigate } from 'react-router-dom';
+import { StructureCard } from '@/features/dashboard/components/StructureCard';
 import { QrCode, LogOut, CheckCircle2, Circle, Clock, AlertTriangle, ScanLine, X, ChevronRight, Bot, History, FileWarning, ListTodo } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatBot } from '@/features/ai/ChatBot';
@@ -19,6 +20,7 @@ const MaintenanceWorker = () => {
   const { user, logout, maintenanceTasks, updateMaintenanceTaskStatus, fetchMaintenanceTasks, toggleChat, isChatOpen, structures, addMaintenanceTask } = useAppStore();
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
+  const [foundStructure, setFoundStructure] = useState<any>(null);
 
   // Report Form State
   const [reportType, setReportType] = useState('damage');
@@ -54,7 +56,7 @@ const MaintenanceWorker = () => {
 
   // Auth Guard
   useEffect(() => {
-    if (!user || user.email !== 'worker@smartnode.io') {
+    if (!user || !user.email.startsWith('worker@')) {
       navigate('/login');
     }
   }, [user, navigate]);
@@ -292,6 +294,7 @@ const MaintenanceWorker = () => {
                                     
                                     if (found) {
                                         setScannedData(found.id);
+                                        setFoundStructure(found); // Show Details Modal
                                         toast.success(`Asset Identified: ${found.name}`);
                                         setIsScanning(false);
                                         // Auto-select for report
@@ -330,6 +333,44 @@ const MaintenanceWorker = () => {
                  </Button>
              </div>
          </DialogContent>
+      </Dialog>
+
+      {/* Scanned Asset Details Modal */}
+      <Dialog open={!!foundStructure} onOpenChange={(open) => !open && setFoundStructure(null)}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-transparent border-0 shadow-none">
+             {foundStructure && (
+                <div className="relative">
+                     <StructureCard 
+                        id={foundStructure.id}
+                        name={foundStructure.name}
+                        type={foundStructure.type}
+                        health={foundStructure.health}
+                        sensors={foundStructure.sensors}
+                        location={foundStructure.location}
+                        gatewayConnectivity={foundStructure.gatewayConnectivity}
+                        isSelected={true}
+                        onSelect={() => {}} 
+                        onViewDetails={() => {
+                            setFoundStructure(null);
+                            // Auto-select for report
+                        }}
+                     />
+                     <Button 
+                        size="sm"
+                        className="absolute top-4 right-4 z-20 bg-white/20 hover:bg-white/30 text-slate-800 backdrop-blur-md border border-white/20"
+                        onClick={() => setFoundStructure(null)}
+                     >
+                        <X className="w-4 h-4" />
+                     </Button>
+                     
+                     <div className="absolute -bottom-4 left-0 right-0 p-4 transform translate-y-full">
+                         <Button className="w-full bg-slate-900 shadow-xl" onClick={() => setFoundStructure(null)}>
+                             Proceed to Report
+                         </Button>
+                     </div>
+                </div>
+             )}
+        </DialogContent>
       </Dialog>
 
       {/* AI Chat Button */}

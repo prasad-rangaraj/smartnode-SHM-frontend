@@ -27,7 +27,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
+      const res = await fetch('https://smartnode-shm-backend.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -40,7 +40,7 @@ const Login = () => {
       login(data.token, data.user);
       
       // Role-based Redirect
-      if (email === 'worker@smartnode.io') {
+      if (email.startsWith('worker@')) {
          toast.success('Field Ops Mode Activated');
          navigate('/worker');
       } else {
@@ -59,7 +59,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/register', {
+      const res = await fetch('https://smartnode-shm-backend.onrender.com/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: regEmail, password: regPassword }),

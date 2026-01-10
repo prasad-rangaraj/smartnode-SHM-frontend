@@ -247,7 +247,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchMaintenanceTasks: async (userId?) => {
     try {
       const query = userId ? `?userId=${userId}` : '';
-      const res = await fetch(`http://localhost:3001/api/maintenance${query}`);
+      const res = await fetch(`https://smartnode-shm-backend.onrender.com/api/maintenance${query}`);
       const data = await res.json();
       set({ maintenanceTasks: data });
     } catch (err) {
@@ -257,7 +257,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   fetchInventoryReports: async () => {
     try {
-       const res = await fetch('http://localhost:3001/api/inventory');
+       const res = await fetch('https://smartnode-shm-backend.onrender.com/api/inventory');
        const data = await res.json();
        set({ inventoryReports: data });
     } catch (err) {
@@ -267,7 +267,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addMaintenanceTask: async (task) => {
      try {
-        const res = await fetch('http://localhost:3001/api/maintenance', {
+        const res = await fetch('https://smartnode-shm-backend.onrender.com/api/maintenance', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify(task)
@@ -284,7 +284,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   updateMaintenanceTaskStatus: async (id, status) => {
      try {
-        await fetch(`http://localhost:3001/api/maintenance/${id}`, {
+        await fetch(`https://smartnode-shm-backend.onrender.com/api/maintenance/${id}`, {
            method: 'PATCH',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ status })
@@ -299,7 +299,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addInventoryReport: async (report) => {
      try {
-        const res = await fetch('http://localhost:3001/api/inventory', {
+        const res = await fetch('https://smartnode-shm-backend.onrender.com/api/inventory', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify(report)
@@ -315,7 +315,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { socket } = get();
     if (socket) return; // Already connected
 
-    const ws = new WebSocket('ws://localhost:3001');
+    const ws = new WebSocket('wss://smartnode-shm-backend.onrender.com');
 
     ws.onopen = () => {
       console.log('Connected to Server');
