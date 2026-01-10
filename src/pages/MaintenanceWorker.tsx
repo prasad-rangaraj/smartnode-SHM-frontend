@@ -338,7 +338,7 @@ const MaintenanceWorker = () => {
       </Dialog>
 
       {/* Scanned Asset Details Modal */}
-      <Dialog open={!!foundStructure} onOpenChange={(open) => !open && setFoundStructure(null)}>
+      <Dialog open={!!foundStructure && !isTelemetryOpen} onOpenChange={(open) => !open && setFoundStructure(null)}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-transparent border-0 shadow-none">
              {foundStructure && (
                 <div className="relative">
