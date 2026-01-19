@@ -249,9 +249,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       const query = userId ? `?userId=${userId}` : '';
       const res = await fetch(`https://smartnode-shm-backend.onrender.com/api/maintenance${query}`);
       const data = await res.json();
-      set({ maintenanceTasks: data });
+      if (Array.isArray(data)) {
+        set({ maintenanceTasks: data });
+      } else {
+        console.error("fetchMaintenanceTasks: Expected array but got:", data);
+        set({ maintenanceTasks: [] });
+      }
     } catch (err) {
       console.error(err);
+      set({ maintenanceTasks: [] });
     }
   },
 
@@ -259,9 +265,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
        const res = await fetch('https://smartnode-shm-backend.onrender.com/api/inventory');
        const data = await res.json();
-       set({ inventoryReports: data });
+       if (Array.isArray(data)) {
+         set({ inventoryReports: data });
+       } else {
+         console.error("fetchInventoryReports: Expected array but got:", data);
+         set({ inventoryReports: [] });
+       }
     } catch (err) {
        console.error(err);
+       set({ inventoryReports: [] });
     }
   },
 
