@@ -47,7 +47,7 @@ import {
 import jsPDF from 'jspdf';
 import { generateAuditReport } from '@/services/openRouterService';
 
-const MaintenanceInventory = () => {
+const MaintenanceInventory = ({ locationFilter }: { locationFilter: string }) => {
   const { maintenanceTasks, updateMaintenanceTaskStatus, addMaintenanceTask, fetchMaintenanceTasks, fetchInventoryReports, structures } = useAppStore();
   const [filter, setFilter] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -65,14 +65,20 @@ const MaintenanceInventory = () => {
   const [newTaskType, setNewTaskType] = useState('Maintenance');
   const [newTaskPriority, setNewTaskPriority] = useState<MaintenanceTask['priority']>('Medium');
 
-  const filteredTasks = maintenanceTasks.filter(task => 
-    (task.item.toLowerCase().includes(filter.toLowerCase()) || 
-    task.id.toLowerCase().includes(filter.toLowerCase())) &&
+  const filteredTasks = maintenanceTasks.filter(task => {
+    const taskLocation = structures.find(s => task.item.includes(s.name))?.location || 'General';
+    const matchesFilter = (task.item.toLowerCase().includes(filter.toLowerCase()) || 
+    task.id.toLowerCase().includes(filter.toLowerCase()));
+    
+    // Exact match for location filter (passed from parent)
+    const matchesLocation = locationFilter ? taskLocation === locationFilter || (locationFilter === 'General' && !structures.find(s => task.item.includes(s.name))) : true;
+
+    return matchesFilter && matchesLocation &&
     task.status !== 'Pending Review' &&
     !task.item.startsWith('Damage Report') &&
     !task.item.startsWith('Complaint') &&
-    !task.item.startsWith('Request')
-  );
+    !task.item.startsWith('Request');
+  });
 
   const handleAddTask = () => {
     if (!newTaskItem) return;
@@ -106,6 +112,8 @@ const MaintenanceInventory = () => {
                onChange={(e) => setFilter(e.target.value)}
              />
           </div>
+          
+          {/* Location Filter moved to Parent View */}
         </div>
         
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -271,54 +279,119 @@ const MaintenanceInventory = () => {
 };
 
 const ReportsInventory = () => {
-    const { inventoryReports, addInventoryReport, structures } = useAppStore();
+    const { inventoryReports, addInventoryReport, structures, maintenanceTasks } = useAppStore();
+    const [viewReport, setViewReport] = useState<InventoryReport | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
 
     const handleGenerateReport = async () => {
        setIsGenerating(true);
-       toast.info('Initiating AI Audit (Llama-3)...');
+       toast.info('Initiating AI Audit (DeepSeek V3)...');
        
-       try {
-           // Try to get key from valid storage location if implemented, otherwise use mock/demo for now
-           // In a real flow, we'd prompt. For seamless demo, we'll try to use a preset or fallback to simulation if fails.
-           const apiKey = localStorage.getItem('openRouterApiKey') || ''; 
-           
-           let reportContent = '';
-           if (apiKey) {
-               reportContent = await generateAuditReport(apiKey, structures);
-           } else {
-               // Simulation fallback if no key (so user isn't blocked)
-               await new Promise(r => setTimeout(r, 2500));
-               reportContent = `
-STRUCTURAL INTEGRITY AUDIT REPORT
+       const fallbackReport = `
+# STRUCTURAL INTEGRITY & INVENTORY LOGISTICS REPORT
 Date: ${new Date().toLocaleDateString()}
 
-1. EXECUTIVE SUMMARY
+## 1. EXECUTIVE SUMMARY
 The infrastructure network is currently operating at nominal capacity. Recent stress tests indicate stable performance across 92% of all sensor nodes. The system is secure and efficient.
 
-2. DETAILED FINDINGS
+## 2. INVENTORY ANALYSIS
+- **Total Assets**: ${structures.length + structures.reduce((acc, s) => acc + s.sensors.length, 0) + 24} units active.
+- **Cost Efficiency**: Maintenance costs are within budget for Q${Math.floor((new Date().getMonth() + 3) / 3)}.
+- **Asset Health**: 98% of sensors are reporting valid data.
+
+## 3. MAINTENANCE & COMPLAINTS
+- **Active Tasks**: ${maintenanceTasks.filter(t => t.status !== 'Completed').length} pending.
+- **High Priority**: ${maintenanceTasks.filter(t => t.status !== 'Completed' && t.priority === 'High').length} tasks require immediate attention.
+- **Complaints**: No critical complaints unresolved.
+
+## 4. DETAILED FINDINGS
 - Tower Alpha: All systems nominal. Minor vibration detected in East Wing (within tolerance).
 - Bridge Nexus: WARNING status on Mid Span sensor. Immediate inspection recommended.
 - Flyover Beta: Stable.
 
-3. RECOMMENDATIONS
+## 5. RECOMMENDATIONS
 - Schedule immediate maintenance for Bridge Nexus.
 - Continue monitoring vibration trends in Tower Alpha.
 - Verify firmware version on all Gateway nodes.
-               `;
+       `;
+
+       try {
+           // --- Calculate Analysis Metrics for the AI ---
+           const activeMaintenance = maintenanceTasks.filter(t => t.status !== 'Completed').length;
+           const highPriorityTasks = maintenanceTasks.filter(t => t.status !== 'Completed' && t.priority === 'High').length;
+           const pendingAlerts = maintenanceTasks.filter(t => t.status === 'Overdue').length;
+           
+           const sensorCount = structures.reduce((acc, s) => acc + s.sensors.length, 0);
+           const totalAssets = structures.length + sensorCount + 24;
+
+           const assetDistribution = [
+             { name: 'Sensors', value: sensorCount },
+             { name: 'Struct. Nodes', value: structures.length },
+             { name: 'Gateways', value: Math.ceil(structures.length * 1.2) }, 
+             { name: 'Drones', value: 12 }, 
+           ];
+
+           // Simulate Cost Data (matching Analysis Tab)
+           const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+           const currentQ = Math.floor((new Date().getMonth() + 3) / 3);
+           const maintenanceCosts = quarters.map((q, i) => {
+               const qIndex = i + 1;
+               if (qIndex > currentQ) return { name: q, maintenance: 0, repairs: 0 };
+               const completedCount = maintenanceTasks.filter(t => t.status === 'Completed').length;
+               const variableCost = completedCount * 150; 
+               return { 
+                 name: q, 
+                 maintenance: 5000 + (variableCost * (Math.random() * 0.5 + 0.8)), 
+                 repairs: 2000 + (variableCost * (Math.random() * 0.8 + 0.2)) 
+               };
+           });
+
+           const analysisMetrics = {
+               totalAssets,
+               activeMaintenance,
+               highPriorityTasks,
+               pendingAlerts,
+               systemUptime: "99.9%",
+               maintenanceCosts,
+               assetDistribution
+           };
+
+           // Default to fallback
+           let reportContent = fallbackReport;
+           let isAI = false;
+           
+           try {
+             // Explicitly requesting DeepSeek V3
+             const aiCo = await generateAuditReport('deepseek/deepseek-chat', structures, maintenanceTasks, analysisMetrics);
+             
+             // Verify AI content quality
+             if (aiCo && aiCo.length > 200 && !aiCo.includes("No response received") && !aiCo.includes("offline heuristic")) {
+                 reportContent = aiCo;
+                 isAI = true;
+             } else {
+                 console.warn("AI response invalid, keeping fallback.");
+                 toast.warning("AI Service busy. Using Simulation Report.");
+             }
+           } catch (genError) {
+             console.warn("Generation failed:", genError);
+             toast.warning("AI Connection failed. Using Simulation Report.");
            }
            
            const newReport: InventoryReport = {
             id: `R-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
-            title: apiKey ? 'AI Generated Audit (Llama-3)' : 'Auto-Generated System Audit',
+            title: isAI ? 'AI Comprehensive Audit (DeepSeek)' : 'System Audit Report (Simulated)',
             date: new Date().toISOString().split('T')[0],
-            size: apiKey ? '1.5 MB' : '840 KB',
-            author: apiKey ? 'Sentinel AI (Llama)' : 'System Diagnostic',
+            size: isAI ? '1.8 MB' : '920 KB',
+            author: isAI ? 'Sentinel AI' : 'System Diagnostic',
             content: reportContent
            };
            
            addInventoryReport(newReport);
-           toast.success('Report generated successfully.');
+           if (isAI) {
+               toast.success('AI Report generated successfully.');
+           } else {
+               toast.success('Report generated successfully (Simulation Mode).');
+           }
 
        } catch (error) {
            console.error(error);
@@ -332,7 +405,7 @@ The infrastructure network is currently operating at nominal capacity. Recent st
       try {
         const doc = new jsPDF();
         
-        // --- Google Doc Style Template ---
+        // --- Enhanced Formatted PDF ---
         
         // 1. Header Area
         doc.setFontSize(10);
@@ -345,25 +418,92 @@ The infrastructure network is currently operating at nominal capacity. Recent st
         doc.line(14, 18, 196, 18);
 
         // 2. Title
-        doc.setFontSize(24);
+        doc.setFontSize(22);
         doc.setTextColor(0, 0, 0);
         doc.setFont("helvetica", "bold");
-        doc.text(report.title, 14, 35);
+        doc.text(report.title, 14, 30);
         
         // 3. Metadata
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
-        doc.text(`Date Generated: ${report.date}`, 14, 45);
-        doc.text(`Author: ${report.author}`, 14, 52);
+        doc.text(`Date Generated: ${report.date}`, 14, 38);
+        doc.text(`Author: ${report.author}`, 14, 43);
         
-        // 4. Content Body
-        doc.setFontSize(12);
+        // 4. Content Body (Smart Parsing)
+        let yPos = 55;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 14;
+        const lineHeight = 7;
+        
+        const content = report.content || "No content.";
+        const lines = content.split('\n');
+        
+        doc.setFontSize(11);
         doc.setTextColor(0, 0, 0);
-        
-        // We need to split text to fit page width
-        const contentLines = doc.splitTextToSize(report.content || "No content available.", 180);
-        doc.text(contentLines, 14, 70);
+
+        lines.forEach((line) => {
+            // Check Page Break
+            if (yPos > pageHeight - 20) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            const trimmed = line.trim();
+            if (!trimmed) {
+                yPos += 3; // small gap for empty lines
+                return;
+            }
+
+            // Headers (# or ##)
+            if (trimmed.startsWith('# ') || trimmed.startsWith('## ') || trimmed.startsWith('### ')) {
+                 doc.setFont("helvetica", "bold");
+                 doc.setFontSize(14);
+                 doc.setTextColor(23, 23, 23); // Dark Gray
+                 const text = trimmed.replace(/^#+\s*/, '');
+                 doc.text(text, margin, yPos);
+                 yPos += 10;
+                 // Reset font
+                 doc.setFont("helvetica", "normal");
+                 doc.setFontSize(11);
+                 doc.setTextColor(0, 0, 0);
+            } 
+            // Bold Points (**text**) - Basic support (checking valid bold start)
+            else if (trimmed.startsWith('**') || trimmed.includes('**')) {
+                 // Simple approach: Bold the whole line if it looks like a header/key point
+                 // Or separate key: value
+                 const parts = trimmed.split('**');
+                 let xOffset = margin;
+                 
+                 parts.forEach((part, index) => {
+                     if (index % 2 === 1) { // Inside ** **
+                         doc.setFont("helvetica", "bold");
+                     } else {
+                         doc.setFont("helvetica", "normal");
+                     }
+                     doc.text(part, xOffset, yPos);
+                     xOffset += doc.getTextWidth(part);
+                 });
+                 yPos += lineHeight;
+            } 
+            // Bullet Points
+            else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                doc.text("• " + trimmed.substring(2), margin + 5, yPos);
+                yPos += lineHeight;
+            } 
+            // Numbered Lists
+            else if (/^\d+\.\s/.test(trimmed)) {
+                doc.text(trimmed, margin + 5, yPos);
+                yPos += lineHeight;
+            }
+            // Normal Text
+            else {
+                // Formatting regular paragraphs
+                const splitText = doc.splitTextToSize(trimmed, 180);
+                doc.text(splitText, margin, yPos);
+                yPos += (lineHeight * splitText.length); 
+            }
+        });
         
         // 5. Footer
         const pageCount = doc.getNumberOfPages();
@@ -376,7 +516,7 @@ The infrastructure network is currently operating at nominal capacity. Recent st
         }
 
         doc.save(`${report.title.replace(/\s+/g, '_')}.pdf`);
-        toast.success(`Report downloaded.`);
+        toast.success(`Report downloaded as Formatted PDF.`);
       } catch (error) {
         toast.error('Failed to download PDF');
         console.error(error);
@@ -437,28 +577,42 @@ The infrastructure network is currently operating at nominal capacity. Recent st
     );
 };
 
-const InventoryAnalysis = () => {
+const InventoryAnalysis = ({ locationFilter }: { locationFilter: string }) => {
     const { maintenanceTasks, structures } = useAppStore();
     
+    // Filtered Data based on location
+    const filteredTasks = useMemo(() => {
+        if (!locationFilter) return maintenanceTasks;
+        return maintenanceTasks.filter(t => {
+            const loc = structures.find(s => t.item.includes(s.name))?.location || 'General';
+            return loc === locationFilter;
+        });
+    }, [maintenanceTasks, structures, locationFilter]);
+
+    const filteredStructures = useMemo(() => {
+        if (!locationFilter) return structures;
+        return structures.filter(s => s.location === locationFilter);
+    }, [structures, locationFilter]);
+
     // Calculated Metrics
-    const activeMaintenance = maintenanceTasks.filter(t => t.status !== 'Completed').length;
-    const highPriorityCount = maintenanceTasks.filter(t => t.status !== 'Completed' && t.priority === 'High').length;
-    const pendingAlerts = maintenanceTasks.filter(t => t.status === 'Overdue').length;
+    const activeMaintenance = filteredTasks.filter(t => t.status !== 'Completed').length;
+    const highPriorityCount = filteredTasks.filter(t => t.status !== 'Completed' && t.priority === 'High').length;
+    const pendingAlerts = filteredTasks.filter(t => t.status === 'Overdue').length;
     
     const totalAssets = useMemo(() => {
-      const sensors = structures.reduce((acc, s) => acc + s.sensors.length, 0);
-      return structures.length + sensors + 24; // +24 misc (drones/gateways)
-    }, [structures]);
+      const sensors = filteredStructures.reduce((acc, s) => acc + s.sensors.length, 0);
+      return filteredStructures.length + sensors + (locationFilter ? 0 : 24); // +24 misc only for global
+    }, [filteredStructures, locationFilter]);
 
     const assetDistData = useMemo(() => {
-       const sensorCount = structures.reduce((acc, s) => acc + s.sensors.length, 0);
+       const sensorCount = filteredStructures.reduce((acc, s) => acc + s.sensors.length, 0);
        return [
          { name: 'Sensors', value: sensorCount },
-         { name: 'Struct. Nodes', value: structures.length },
-         { name: 'Gateways', value: Math.ceil(structures.length * 1.2) }, // Approx 1.2 per node
-         { name: 'Drones', value: 12 }, // Static fleet size for now
+         { name: 'Struct. Nodes', value: filteredStructures.length },
+         { name: 'Gateways', value: Math.ceil(filteredStructures.length * 1.2) }, 
+         { name: 'Drones', value: locationFilter ? Math.floor(12/3) : 12 }, 
        ];
-    }, [structures]);
+    }, [filteredStructures, locationFilter]);
     
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
 
@@ -585,6 +739,11 @@ const InventoryAnalysis = () => {
 export const InventoryView = () => {
   const { maintenanceTasks, updateMaintenanceTaskStatus, structures } = useAppStore();
   const [activeSubTab, setActiveSubTab] = useState('maintenance');
+  
+  // Lifted State for Global Filter
+  const [locationFilter, setLocationFilter] = useState('');
+  const [openLocationCombo, setOpenLocationCombo] = useState(false);
+  const uniqueLocations = Array.from(new Set(structures.map(s => s.location)));
 
   return (
     <div className="space-y-6 pb-20">
@@ -592,6 +751,69 @@ export const InventoryView = () => {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Inventory & Logistics</h2>
           <p className="text-slate-500">Manage assets, track maintenance, and review system reports.</p>
+        </div>
+        
+        {/* Global Location Filter */}
+        <div className="flex items-center gap-2">
+            <Badge variant="outline" className="h-9 px-3 bg-white border-slate-200 text-slate-500 hidden sm:flex">
+                <Filter className="w-3 h-3 mr-2" /> Global Filter
+            </Badge>
+            <Popover open={openLocationCombo} onOpenChange={setOpenLocationCombo}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={openLocationCombo}
+                className="justify-between w-[200px] bg-white"
+              >
+                {locationFilter || "All Locations"}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0">
+              <Command>
+                <CommandInput placeholder="Search location..." />
+                <CommandList>
+                  <CommandEmpty>No location found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                        value="All Locations"
+                        onSelect={() => {
+                          setLocationFilter("");
+                          setOpenLocationCombo(false);
+                        }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", locationFilter === "" ? "opacity-100" : "opacity-0")} />
+                      All Locations
+                    </CommandItem>
+                    {uniqueLocations.map((loc) => (
+                      <CommandItem
+                        key={loc}
+                        value={loc}
+                        onSelect={(currentValue) => {
+                          setLocationFilter(currentValue === locationFilter ? "" : currentValue);
+                          setOpenLocationCombo(false);
+                        }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", locationFilter === loc ? "opacity-100" : "opacity-0")} />
+                        {loc}
+                      </CommandItem>
+                    ))}
+                    <CommandItem
+                        value="General"
+                        onSelect={() => {
+                          setLocationFilter("General");
+                          setOpenLocationCombo(false);
+                        }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", locationFilter === "General" ? "opacity-100" : "opacity-0")} />
+                      General
+                    </CommandItem>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
@@ -612,7 +834,7 @@ export const InventoryView = () => {
         </TabsList>
 
         <TabsContent value="maintenance">
-            <MaintenanceInventory />
+            <MaintenanceInventory locationFilter={locationFilter} />
         </TabsContent>
         
         <TabsContent value="reports">
@@ -620,7 +842,7 @@ export const InventoryView = () => {
         </TabsContent>
 
         <TabsContent value="analysis">
-            <InventoryAnalysis />
+            <InventoryAnalysis locationFilter={locationFilter} />
         </TabsContent>
 
         <TabsContent value="complaints">
@@ -645,12 +867,16 @@ export const InventoryView = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {maintenanceTasks.filter(t => t.status === 'Pending Review' || t.item.includes('Complaint') || t.item.includes('Damage Report') || t.item.includes('Request')).length === 0 ? (
+                                    {maintenanceTasks.filter(t => (t.status === 'Pending Review' || t.item.includes('Complaint') || t.item.includes('Damage Report') || t.item.includes('Request')) && 
+                                    (!locationFilter || (structures.find(s => t.item.includes(s.name))?.location || 'General') === locationFilter)
+                                    ).length === 0 ? (
                                         <tr>
                                             <td colSpan={7} className="p-8 text-center text-muted-foreground">No pending reviews, complaints, or requests.</td>
                                         </tr>
                                     ) : (
-                                        maintenanceTasks.filter(t => t.status === 'Pending Review' || t.item.includes('Complaint') || t.item.includes('Damage Report') || t.item.includes('Request')).map((task) => (
+                                        maintenanceTasks.filter(t => (t.status === 'Pending Review' || t.item.includes('Complaint') || t.item.includes('Damage Report') || t.item.includes('Request')) &&
+                                        (!locationFilter || (structures.find(s => t.item.includes(s.name))?.location || 'General') === locationFilter)
+                                        ).map((task) => (
                                             <tr key={task.id} className="border-b last:border-0 hover:bg-slate-50">
                                                 <td className="p-4 font-mono">{task.id}</td>
                                                 <td className="p-4 font-medium">{task.item}</td>

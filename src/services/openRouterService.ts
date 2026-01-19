@@ -1,9 +1,18 @@
-
-import { Structure } from "@/store/useAppStore";
+import { Structure, MaintenanceTask } from "@/store/useAppStore";
 
 export interface OpenRouterMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+}
+
+export interface InventoryAnalysisMetrics {
+    totalAssets: number;
+    activeMaintenance: number;
+    highPriorityTasks: number;
+    pendingAlerts: number;
+    systemUptime: string;
+    maintenanceCosts: { name: string; maintenance: number; repairs: number }[];
+    assetDistribution: { name: string; value: number }[];
 }
 
 export const MODELS = [
@@ -14,8 +23,10 @@ export const MODELS = [
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-export const createOpenRouterSystemPrompt = (structures: Structure[]): string => {
+export const createOpenRouterSystemPrompt = (structures: Structure[], maintenanceTasks: MaintenanceTask[] = [], analysisMetrics?: InventoryAnalysisMetrics): string => {
   const criticalCount = structures.filter(s => s.health === 'critical').length;
+  const pendingMaintenance = maintenanceTasks.filter(t => t.status !== 'Completed').length;
+  const activeComplaints = maintenanceTasks.filter(t => (t.item.startsWith('Complaint') || t.item.startsWith('Damage')) && t.status !== 'Completed').length;
   
   // Create a detailed JSON-like summary for the LLM to read
   const detailedContext = structures.map(s => {
@@ -30,14 +41,38 @@ export const createOpenRouterSystemPrompt = (structures: Structure[]): string =>
     `;
   }).join('\n--------------------------------------------------\n');
 
+  const tasksContext = maintenanceTasks.slice(0, 20).map(t => 
+    `- [${t.status}] ${t.priority} Priority: ${t.item} (Due: ${t.due})`
+  ).join('\n');
+
+  let analysisContext = "";
+  if (analysisMetrics) {
+      analysisContext = `
+      INVENTORY ANALYSIS METRICS:
+      - Total Assets Managed: ${analysisMetrics.totalAssets}
+      - System Uptime: ${analysisMetrics.systemUptime}
+      - High Priority Tasks: ${analysisMetrics.highPriorityTasks}
+      - Pending Alerts: ${analysisMetrics.pendingAlerts}
+      - Asset Distribution: ${analysisMetrics.assetDistribution.map(a => `${a.name}: ${a.value}`).join(', ')}
+      - Quarterly Costs: ${analysisMetrics.maintenanceCosts.map(c => `${c.name}: $${(c.maintenance + c.repairs).toFixed(0)}`).join(', ')}
+      `;
+  }
+
   return `You are Sentinel, an advanced AI infrastructure assistant for the "SmartNode-SHM" project.
   
   SYSTEM OVERVIEW:
   - Total Structures: ${structures.length}
   - Active Critical Alerts: ${criticalCount}
+  - Pending Maintenance Tasks: ${pendingMaintenance}
+  - Active Complaints: ${activeComplaints}
   
+  ${analysisContext}
+
   FULL PROJECT DATA (User requested ALL details):
   ${detailedContext}
+
+  RECENT MAINTENANCE TASKS & COMPLAINTS:
+  ${tasksContext}
   
   INSTRUCTIONS:
   1. You have access to the COMPLETE project telemetry above.
@@ -92,30 +127,38 @@ const generateMockResponse = (messages: OpenRouterMessage[]): string => {
         return "Based on the telemetry trends, the structural load is nominal. However, Sensor B-14 shows a slight deviation (+2.4%). Recommendation: Continue monitoring.";
     }
     if (lastUserMsg.includes("report")) {
-        return "**Structural Audit Summary**\n\n*   **Health Score**: 94/100\n*   **Critical Nodes**: None\n*   **Action Items**: Calibration required for North Zone Gateway.\n\nAll systems are operating within safety parameters.";
+        return "**Structural & Maintenance Audit Summary**\n\n*   **Health Score**: 94/100\n*   **Critical Nodes**: None\n*   **Maintenance Status**: 3 Tasks Pending, 0 Overdue.\n*   **Complaints**: No active complaints.\n\nAll systems are operating within safety parameters.";
     }
     return "I am currently running in offline heuristic mode. Structural integrity appears stable across the deployed sensor network. How can I assist with specific data queries?";
 };
 
 
-export const generateAuditReport = async (modelId: string, structures: Structure[]): Promise<string> => {
+export const generateAuditReport = async (modelId: string, structures: Structure[], maintenanceTasks: MaintenanceTask[], analysisMetrics?: InventoryAnalysisMetrics): Promise<string> => {
    const selectedModel = MODELS.find(m => m.id === modelId) || MODELS[0];
-   const context = createOpenRouterSystemPrompt(structures);
+   const context = createOpenRouterSystemPrompt(structures, maintenanceTasks, analysisMetrics);
    
    const messages: OpenRouterMessage[] = [
      { role: 'system', content: context },
      { 
        role: 'user', 
-       content: `Generate a formal "Structural Audit Report" for the current system state using ${selectedModel.name}.
+       content: `Generate a formal "Comprehensive Inventory & System Report" for the current system state using ${selectedModel.name}.
        
-       FORMAT REQUIREMENTS (Google Doc Style):
-       1. Title: "STRUCTURAL INTEGRITY AUDIT REPORT"
-       2. Date: [Current Date]
-       3. Executive Summary: Brief overview of system health.
-       4. Detailed Findings: List specific sensors or structures that are Critical or Warning.
-       5. Recommendations: Engineering actions to take.
+       FORMAT REQUIREMENTS (Strictly follow for PDF generation):
+       1. Title: "SYSTEM INTEGRITY & INVENTORY LOGISTICS REPORT"
+       2. Executive Summary: Overview of structural health AND maintenance operations.
+       3. Inventory Analysis: 
+          - Asset Distribution (comment on the data provided)
+          - Cost Analysis (comment on the quarterly costs provided)
+       4. Maintenance & Complaints:
+          - Backlog status
+          - Critical issues
+          - Active complaints analysis
+       5. Structural Health Findings:
+          - Detail specific structure health
+       6. Recommendations: Engineering and Operational actions.
        
-       Keep it professional, concise, and structured. Use bullet points.` 
+       Style: Professional, concise, bullet points.
+       ` 
      }
    ];
 

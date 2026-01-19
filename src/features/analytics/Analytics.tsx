@@ -216,22 +216,7 @@ export const Analytics = () => {
 
   // ... rendering code updates ...
 
-                 <div className="grid grid-cols-2 gap-2 text-left bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
-                    <div>
-                        <div className="text-[10px] text-slate-400 uppercase">Confidence</div>
-                        <div className="text-lg font-bold text-slate-700">{(modelConfidence * 100).toFixed(1)}%</div>
-                    </div>
-                    <div>
-                        <div className="text-[10px] text-slate-400 uppercase">Horizon</div>
-                        <div className="text-lg font-bold text-slate-700">+{predictionData.length}h</div>
-                    </div>
-                    <div className="col-span-2 border-t border-slate-100 pt-2 mt-1">
-                         <div className="text-[10px] text-slate-400 uppercase">Engine Source</div>
-                         <div className={`text-xs font-bold ${predictionSource === 'TensorFlow' ? 'text-violet-600' : 'text-amber-600'}`}>
-                            {predictionSource} Model
-                         </div>
-                    </div>
-                 </div>
+
 
 
   return (
